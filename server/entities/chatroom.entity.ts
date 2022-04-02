@@ -13,4 +13,7 @@ export class ChatRoom {
 
   @Column({ nullable: false })
   longitude: number;
+
+  @Column()
+  roomkey: string;
 }

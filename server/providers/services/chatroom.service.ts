@@ -10,7 +10,15 @@ export class ChatRoomService {
     private chatroomRepository: Repository<ChatRoom>,
   ) {}
 
-  findOne(id: number) {
+  findOne(id: number): Promise<ChatRoom> {
     return this.chatroomRepository.findOne(id);
+  }
+
+  findAll(): Promise<ChatRoom[]> {
+    return this.chatroomRepository.find();
+  }
+
+  async create(chatRoom: ChatRoom): Promise<ChatRoom> {
+    return this.chatroomRepository.save(chatRoom);
   }
 }
