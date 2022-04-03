@@ -5,6 +5,8 @@ import * as crypto from 'crypto';
 
 class ChatRoomBody {
   name: string;
+  latitude: number;
+  longitude: number;
 }
 
 @Controller()
@@ -26,11 +28,9 @@ export class ChatRoomController {
   @Post('/chat_rooms')
   async create(@Body() body: ChatRoomBody) {
     let chatRoom = new ChatRoom();
-    navigator.geolocation.getCurrentPosition((position) => {
-      chatRoom.latitude = position.coords.latitude;
-      chatRoom.longitude = position.coords.longitude;
-    });
     chatRoom.name = body.name;
+    chatRoom.longitude = body.longitude;
+    chatRoom.latitude = body.latitude;
     chatRoom.roomkey = crypto.randomBytes(8).toString('hex');
     chatRoom = await this.chatroomService.create(chatRoom);
     return { chatRoom };

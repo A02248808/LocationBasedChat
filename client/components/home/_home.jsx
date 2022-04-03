@@ -1,51 +1,78 @@
-import { useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ApiContext } from '../../utils/api_context';
-import { AuthContext } from '../../utils/auth_context';
-import { RolesContext } from '../../utils/roles_context';
-import { Button } from '../common/button';
-import { Ping } from './ping';
+import { ChatRooms } from './chat_rooms';
+import { Link, Route, Routes } from 'react-router-dom';
+import { RoomDisplay } from './room_display';
+import { ChatRoom } from './chat_room';
 
 export const Home = () => {
-  const [, setAuthToken] = useContext(AuthContext);
   const api = useContext(ApiContext);
-  const roles = useContext(RolesContext);
+  const [isOpen, setIsOpen] = useState(false);
+  const [chatRooms, setChatRooms] = useState([]);
+  const [userLatitude, setUserLatitude] = useState(-1);
+  const [userLongitude, setUserLongitude] = useState(-1);
 
-  const navigate = useNavigate();
-
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
   useEffect(async () => {
-    const res = await api.get('/users/me');
-    setUser(res.user);
-    setLoading(false);
+    const { chatRooms } = await api.get('/chat_rooms');
+    if (chatRooms != null) {
+      setChatRooms(chatRooms);
+    }
+    navigator.geolocation.getCurrentPosition((position) => {
+      setUserLatitude(position.coords.latitude);
+      setUserLongitude(position.coords.longitude);
+    });
   }, []);
 
-  const logout = async () => {
-    const res = await api.del('/sessions');
-    if (res.success) {
-      setAuthToken(null);
-    }
+  const createChatRoom = async (name) => {
+    setIsOpen(false);
+    const { chatRoom } = await api.post('chat_rooms', { name, userLatitude, userLongitude });
+    setChatRooms([...chatRooms], chatRoom);
   };
 
-  if (loading) {
-    return <div>Loading...</div>;
+  function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+    var R = 6371; // Radius of the earth in km
+    var dLat = deg2rad(lat2 - lat1); // deg2rad below
+    var dLon = deg2rad(lon2 - lon1);
+    var a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    var d = R * c; // Distance in km
+    return d;
+  }
+
+  function deg2rad(deg) {
+    return deg * (Math.PI / 180);
+  }
+
+  function isWithin20(room) {
+    if (getDistanceFromLatLonInKm(userLatitude, userLongitude, room.latitude, room.longitude) <= 20) {
+      return true;
+    }
+    return false;
   }
 
   return (
-    <div className="p-4">
-      <h1>Welcome {user.firstName}</h1>
-      <Button type="button" onClick={logout}>
-        Logout
-      </Button>
-      {roles.includes('admin') && (
-        <Button type="button" onClick={() => navigate('/admin')}>
-          Admin
-        </Button>
-      )}
-      <section>
-        <Ping />
-      </section>
+    <div className="app-container">
+      <ChatRooms>
+        {chatRooms
+          .filter((item) => isWithin20(item))
+          .map((room) => {
+            return (
+              <ChatRoom key={room.id} to={`chat_rooms/${room.id}`}>
+                {room.name}
+              </ChatRoom>
+            );
+          })}
+        <ChatRoom action={() => setIsOpen(true)}>+</ChatRoom>
+      </ChatRooms>
+      <div className="chat-window">
+        <Routes>
+          <Route path="chat_rooms/:id" element={<RoomDisplay />} />
+          <Route path="/*" element={<div>Add or Select a Room to Chat</div>} />
+        </Routes>
+      </div>
     </div>
   );
 };
