@@ -31,7 +31,7 @@ export class ChatRoomController {
     chatRoom.name = body.name;
     chatRoom.longitude = body.longitude;
     chatRoom.latitude = body.latitude;
-    chatRoom.roomkey = crypto.randomBytes(8).toString('hex');
+    chatRoom.roomKey = crypto.randomBytes(8).toString('hex');
     chatRoom = await this.chatroomService.create(chatRoom);
     return { chatRoom };
   }

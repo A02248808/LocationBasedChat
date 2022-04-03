@@ -2,9 +2,10 @@ import { useContext } from 'react';
 import React, { useEffect, useState } from 'react';
 import { ApiContext } from '../../utils/api_context';
 import { ChatRooms } from './chat_rooms';
-import { Link, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import { RoomDisplay } from './room_display';
 import { ChatRoom } from './chat_room';
+import { CreateRoomModal } from './CreateRoomModal';
 
 export const Home = () => {
   const api = useContext(ApiContext);
@@ -26,28 +27,29 @@ export const Home = () => {
 
   const createChatRoom = async (name) => {
     setIsOpen(false);
-    const { chatRoom } = await api.post('chat_rooms', { name, userLatitude, userLongitude });
+    const { chatRoom } = await api.post('chat_rooms', { name: name, latitude: userLatitude, longitude: userLongitude });
     setChatRooms([...chatRooms], chatRoom);
   };
 
-  function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-    var R = 6371; // Radius of the earth in km
-    var dLat = deg2rad(lat2 - lat1); // deg2rad below
-    var dLon = deg2rad(lon2 - lon1);
-    var a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    var d = R * c; // Distance in km
+  // Convert Degress to Radians
+  function Deg2Rad(deg) {
+    return (deg * Math.PI) / 180;
+  }
+
+  function PythagorasEquirectangular(lat1, lon1, lat2, lon2) {
+    lat1 = Deg2Rad(lat1);
+    lat2 = Deg2Rad(lat2);
+    lon1 = Deg2Rad(lon1);
+    lon2 = Deg2Rad(lon2);
+    var R = 6371; // km
+    var x = (lon2 - lon1) * Math.cos((lat1 + lat2) / 2);
+    var y = lat2 - lat1;
+    var d = Math.sqrt(x * x + y * y) * R;
     return d;
   }
 
-  function deg2rad(deg) {
-    return deg * (Math.PI / 180);
-  }
-
   function isWithin20(room) {
-    if (getDistanceFromLatLonInKm(userLatitude, userLongitude, room.latitude, room.longitude) <= 20) {
+    if (PythagorasEquirectangular(userLatitude, userLongitude, room.latitude, room.longitude) <= 20) {
       return true;
     }
     return false;
@@ -73,6 +75,7 @@ export const Home = () => {
           <Route path="/*" element={<div>Add or Select a Room to Chat</div>} />
         </Routes>
       </div>
+      {isOpen ? <CreateRoomModal createRoom={createChatRoom} closeModal={() => setIsOpen(false)} /> : null}
     </div>
   );
 };
